@@ -1,0 +1,6 @@
+/.testprune/
+/pkg/
+/tmp/
+*.gem
+Gemfile.lock
+.testprune/

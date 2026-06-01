@@ -1,0 +1,127 @@
+# frozen_string_literal: true
+
+require 'json'
+
+module Testprune
+  # Renders the analysis as a grouped, human-readable report (or JSON). Candidates
+  # are grouped by confidence; HIGH shows safety status, MEDIUM/LOW are marked
+  # review-only.
+  class Report
+    GROUP_TITLES = {
+      identical:  'Identical coverage',
+      subset:     'Subset / subsumed coverage',
+      structural: 'Structurally duplicated test body',
+      overlap:    'High coverage overlap'
+    }.freeze
+
+    def initialize(result, json: false)
+      @result = result
+      @json   = json
+    end
+
+    def render
+      @json ? render_json : render_text
+    end
+
+    private
+
+    def render_text
+      lines = []
+      lines << 'testprune — test coverage redundancy report'
+      lines << "Suite: #{test_count} test(s), framework=#{@result.run['framework']}"
+      if @result.ambient_units.positive?
+        lines << "Baseline: subtracted #{@result.ambient_units} shared-setup unit(s); " \
+                 "#{@result.setup_only} test(s) had no distinctive coverage and were set aside."
+      end
+      lines << ''
+
+      lines.concat(section('HIGH confidence — safe to remove', high_candidates))
+      lines.concat(section('MEDIUM confidence — review (structural duplicates)', medium_candidates))
+      lines.concat(section('LOW confidence — review (overlapping coverage)', low_candidates))
+
+      lines.concat(savings_section)
+      lines << ''
+      lines << if @result.approved_removals.empty?
+                 'No auto-removable candidates. Nothing to apply.'
+               else
+                 'Run `testprune apply` to review and emit a removal patch.'
+               end
+      lines.join("\n")
+    end
+
+    def section(title, candidates)
+      return [] if candidates.empty?
+
+      out = ["#{title}: #{candidates.size}"]
+      candidates.each { |c| out.concat(candidate_lines(c)) }
+      out << ''
+      out
+    end
+
+    def candidate_lines(candidate)
+      fp = candidate.footprint
+      out = []
+      out << "  [#{candidate.group}] #{fp.id}"
+      out << "      at: #{fp.file}:#{fp.line}" if fp.file
+      out << "      reason: #{candidate.reason}"
+      out << "      kept by: #{candidate.kept_by.join(', ')}" unless candidate.kept_by.empty?
+      out << "      covers: #{covered_labels(fp)}"
+      out << "      #{safety_line(candidate)}"
+      out
+    end
+
+    def covered_labels(footprint)
+      labels = footprint.units.map { |id| @result.label_for(id) }.sort
+      labels.size <= 4 ? labels.join('; ') : "#{labels.first(4).join('; ')} (+#{labels.size - 4} more)"
+    end
+
+    def safety_line(candidate)
+      case candidate.safe
+      when true  then '✓ safe — every covered unit remains covered by a retained test'
+      when false then "✗ NOT safe — #{candidate.safety_note} (kept)"
+      else            '· review-only — not auto-applied'
+      end
+    end
+
+    def savings_section
+      s = @result.savings
+      [
+        'Estimated CI savings:',
+        "  #{s.approved_count} test(s), #{format('%.4f', s.approved_time)}s " \
+        "(~#{format('%.1f', s.percent_of_test_time)}% of #{format('%.4f', s.total_test_time)}s test time)",
+        '  Note: under parallel CI runners, wall-clock savings will be lower.'
+      ]
+    end
+
+    def high_candidates   = @result.candidates.select { |c| c.confidence == :high }
+    def medium_candidates = @result.candidates.select { |c| c.confidence == :medium }
+    def low_candidates    = @result.candidates.select { |c| c.confidence == :low }
+    def test_count        = (@result.run['tests'] || []).size
+
+    def render_json
+      JSON.pretty_generate(
+        framework: @result.run['framework'],
+        test_count: test_count,
+        savings: {
+          approved_count: @result.savings.approved_count,
+          approved_time: @result.savings.approved_time,
+          total_test_time: @result.savings.total_test_time,
+          percent_of_test_time: @result.savings.percent_of_test_time
+        },
+        candidates: @result.candidates.map { |c| candidate_json(c) }
+      )
+    end
+
+    def candidate_json(candidate)
+      fp = candidate.footprint
+      {
+        id: fp.id, file: fp.file, line: fp.line,
+        confidence: candidate.confidence, group: candidate.group,
+        reason: candidate.reason, kept_by: candidate.kept_by,
+        review_only: candidate.review_only, safe: candidate.safe,
+        safety_note: candidate.safety_note,
+        covers: fp.units.map { |id| @result.label_for(id) }.sort
+      }
+    end
+  end
+end
