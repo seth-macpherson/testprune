@@ -6,8 +6,8 @@ CONFIG="$REPO_ROOT/.push-gem-config"
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-die()  { echo "push-gem: $*" >&2; exit 1; }
-info() { echo "push-gem: $*"; }
+die()  { echo "gem-push: $*" >&2; exit 1; }
+info() { echo "gem-push: $*"; }
 
 require_op() {
   command -v op &>/dev/null || \
@@ -18,7 +18,7 @@ require_op() {
 
 setup_item() {
   echo ""
-  echo "push-gem: first run — enter the name of your 1Password item that holds the RubyGems OTP."
+  echo "gem-push: first run — enter the name of your 1Password item that holds the RubyGems OTP."
   echo "  (e.g. 'rubygems.org')"
   echo ""
   read -rp "  Item name: " item_name
@@ -30,7 +30,7 @@ setup_item() {
     die "Could not fetch OTP for '$item_name'. Check the item name and that it has a one-time password field."
 
   {
-    echo "# push-gem config — git-ignored, do not commit"
+    echo "# gem-push config — git-ignored, do not commit"
     echo "item_name=$item_name"
   } > "$CONFIG"
 
