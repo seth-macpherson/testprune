@@ -82,7 +82,14 @@ testprune scan -- bundle exec rails test test/controllers/
 
 # Restrict which source files are analyzed (-s is repeatable)
 testprune scan -s app -s lib -s packs
+
+# Show raw test output (disables the progress display)
+testprune scan --verbose        # or -V
 ```
+
+By default, `testprune scan` suppresses raw test runner output and shows a live progress display (spinner + test counter + elapsed time). If test errors occur they are flagged non-blocking — the scan completes and you're prompted to expand the error detail before continuing.
+
+Pass `--verbose` / `-V` to stream raw output directly instead (the pre-0.4.0 behavior).
 
 When run with no arguments, `testprune scan` checks your `test/` directory and flags any subdirectories whose names contain `selenium`, `request`, `piper`, or `integration` — folders that tend to be slow, browser-driven, or external and are generally poor candidates for coverage analysis. You'll be prompted to exclude them before the run starts:
 
@@ -494,6 +501,7 @@ testprune report -s app -s lib || true
 | `-o, --output DIR` | `tmp/.testprune` | all | Where `run.json` and `removal.patch` are written. |
 | `--baseline FRAC` | `0.5` | report, apply | Strip units in ≥ FRAC of tests as shared-setup noise before detection. `0` disables. |
 | `--json` | off | report | Emit machine-readable JSON instead of human text. |
+| `-V, --verbose` | off | scan | Stream raw test output directly (disables progress display). |
 | `-h, --help` | | all | Show help. |
 | `-v, --version` | | | Print version. |
 
@@ -506,6 +514,7 @@ testprune report -s app -s lib || true
 | `TESTPRUNE_OUTPUT_DIR` | Output directory. Set automatically by `testprune scan`. |
 | `TESTPRUNE_DEBUG` | Print adapter-load diagnostics (`[testprune-debug] autostart loaded in pid …`). Useful when capture produces no `run.json`. |
 | `DISABLE_SPRING` | Disable Spring preloader so the test process inherits testprune's instrumentation. |
+| `NO_COLOR` | Set to any value to disable all ANSI color output ([no-color.org](https://no-color.org/)). Styled output is also disabled automatically when stdout/stderr is not a TTY (e.g. piped output, CI without color support). |
 
 </details>
 

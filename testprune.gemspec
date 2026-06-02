@@ -25,4 +25,5 @@ Gem::Specification.new do |spec|
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   spec.add_dependency('prism', ['>= 1.0', '< 3'])
+  spec.add_dependency('lipgloss', '>= 0.1')
 end

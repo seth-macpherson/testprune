@@ -2,6 +2,7 @@
 
 require 'optparse'
 require_relative '../testprune'
+require_relative 'ui'
 
 module Testprune
   # Command-line front end. Three real commands:
@@ -32,6 +33,7 @@ module Testprune
             --baseline FRAC    Treat units run by >= FRAC of tests as shared-setup
                                noise and subtract them (0..1; default 0.5; 0 to disable)
             --json             Emit machine-readable JSON (report only)
+        -V, --verbose          Show raw test output during scan (disables progress display)
         -h, --help             Show this help
         -v, --version          Show version
     TXT
@@ -78,6 +80,7 @@ module Testprune
         o.on('-o', '--output DIR')  { |v| opts[:output] = v }
         o.on('--baseline FRAC', Float) { |v| opts[:baseline] = v }
         o.on('--json')              { opts[:json] = true }
+        o.on('-V', '--verbose')     { opts[:verbose] = true }
         o.on('-h', '--help')        { puts(BANNER); exit(0) }
       end
       rest = parser.parse(argv)
@@ -104,7 +107,7 @@ module Testprune
       elsif test_command.nil?
         test_command = runner.command_for_paths(paths)
       end
-      runner.call(test_command)
+      runner.call(test_command, verbose: opts[:verbose])
     end
 
     def prompt_noisy_exclusions(runner)
@@ -131,8 +134,29 @@ module Testprune
     end
 
     def cmd_prune(argv)
+      if UI.tty?($stderr)
+        $stderr.puts UI::Styles::HEADER_BOX.render("✂️  testprune prune — scan + apply in one step")
+        $stderr.puts
+      end
       cmd_scan(argv)
-      cmd_apply([])
+      if UI.tty?($stderr)
+        sep = UI::Styles::PURPLE_TEXT.render('  ' + '━' * 58)
+        $stderr.puts
+        $stderr.puts sep
+        $stderr.puts "  #{UI::Styles::PURPLE_TEXT.render('✂️')}  Moving to apply…"
+        $stderr.puts sep
+        $stderr.puts
+      end
+      patch_path = cmd_apply([])
+      # T018: done summary
+      if UI.tty?($stdout)
+        summary = case patch_path
+                  when String then "  ✂️  Done — patch written\n     #{UI::Styles::PURPLE_TEXT.render("git apply #{patch_path}")}"
+                  when false  then "  ✂️  Done — aborted, no patch written"
+                  else             "  ✂️  Done — nothing to prune"
+                  end
+        puts UI::Styles::SUCCESS_BOX.render(summary)
+      end
     end
 
     def cmd_report(argv)
@@ -154,22 +178,46 @@ module Testprune
 
       approved = result.approved_removals
       if approved.empty?
-        puts("\nNothing safe to remove. No patch written.")
-        return
+        msg = "  Nothing safe to remove. No patch written."
+        puts(UI.tty?($stdout) ? UI::Styles::SUCCESS_BOX.render(msg) : "\n#{msg.strip}")
+        return nil
       end
 
-      print("\nApply #{approved.size} HIGH-confidence, safety-verified removal(s) as a patch?\n" \
-            "(MEDIUM/LOW review-only candidates are NOT patched automatically.) [y/N] ")
+      # Styled confirmation prompt
+      if UI.tty?($stdout)
+        puts
+        puts "  Apply #{UI::Styles::GREEN_TEXT.render(approved.size.to_s)} HIGH-confidence removal(s) as a patch?"
+        puts "  #{UI::Styles::DIM_TEXT.render('(MEDIUM/LOW review-only candidates are NOT patched.)')}"
+        print "  #{UI::Styles::PURPLE_TEXT.render('[y/N]')} > "
+      else
+        print("\nApply #{approved.size} HIGH-confidence, safety-verified removal(s) as a patch?\n" \
+              "(MEDIUM/LOW review-only candidates are NOT patched automatically.) [y/N] ")
+      end
+
       answer = $stdin.gets&.strip&.downcase
       unless %w[y yes].include?(answer)
-        puts('Aborted. No patch written.')
-        return
+        msg = "  Aborted — no patch written."
+        puts(UI.tty?($stdout) ? UI::Styles::DIM_TEXT.render(msg) : 'Aborted. No patch written.')
+        return false
       end
 
       require_relative 'patch_writer'
       path = PatchWriter.new(Testprune.config).write(approved)
-      puts("Wrote #{path}")
-      puts("Review it, then apply with:  git apply #{path}")
+
+      if UI.tty?($stdout)
+        box = [
+          "  #{UI::Styles::GREEN_TEXT.render('✓')}  Patch written",
+          "     #{path}",
+          "     #{UI::Styles::DIM_TEXT.render('Apply with:')}  " \
+          "#{UI::Styles::PURPLE_TEXT.render("git apply #{path}")}"
+        ].join("\n")
+        puts UI::Styles::SUCCESS_BOX.render(box)
+      else
+        puts("Wrote #{path}")
+        puts("Review it, then apply with:  git apply #{path}")
+      end
+
+      path
     end
   end
 end

@@ -28,7 +28,7 @@ class IntegrationTest < Minitest::Test
   end
 
   def test_capture_report_and_patch
-    _, run_status = cli('run', '-s', 'lib', '--',
+    _, run_status = cli('scan', '-s', 'lib', '--',
                         'ruby', '-Itest', '-Ilib', 'test/calculator_test.rb')
     assert run_status.success?
     assert File.exist?(File.join(FIXTURE, 'tmp', '.testprune', 'run.json'))

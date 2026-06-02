@@ -26,27 +26,8 @@ module Testprune
     private
 
     def render_text
-      lines = []
-      lines << 'testprune — test coverage redundancy report'
-      lines << "Suite: #{test_count} test(s), framework=#{@result.run['framework']}"
-      if @result.ambient_units.positive?
-        lines << "Baseline: subtracted #{@result.ambient_units} shared-setup unit(s); " \
-                 "#{@result.setup_only} test(s) had no distinctive coverage and were set aside."
-      end
-      lines << ''
-
-      lines.concat(section('HIGH confidence — safe to remove', high_candidates))
-      lines.concat(section('MEDIUM confidence — review (structural duplicates)', medium_candidates))
-      lines.concat(section('LOW confidence — review (overlapping coverage)', low_candidates))
-
-      lines.concat(savings_section)
-      lines << ''
-      lines << if @result.approved_removals.empty?
-                 'No auto-removable candidates. Nothing to apply.'
-               else
-                 'Run `testprune apply` to review and emit a removal patch.'
-               end
-      lines.join("\n")
+      require_relative 'ui/report_renderer'
+      UI::ReportRenderer.new(@result).render
     end
 
     def section(title, candidates)
