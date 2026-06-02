@@ -64,8 +64,13 @@ bundle exec testprune run
 ### Step 1 — Capture
 
 ```sh
-# Autodetect: runs `rspec` if spec/ exists, `rake test` otherwise
+# No args: autodetects framework; prompts to exclude slow/integration folders
+# (any test/ subdirectory matching: selenium, request, piper, integration)
 testprune run
+
+# Positional paths — no `--` needed
+testprune run test/api test/services test/models
+testprune run test/models test/jobs -s app -s lib
 
 # Explicit command (pass after --)
 testprune run -- bundle exec rspec spec/models
@@ -75,6 +80,17 @@ testprune run -- bundle exec rails test test/controllers/
 # Restrict which source files are analyzed (-s is repeatable)
 testprune run -s app -s lib -s packs
 ```
+
+When run with no arguments, testprune scans your `test/` directory and flags any subdirectories whose names contain `selenium`, `request`, `piper`, or `integration` — folders that tend to be slow, browser-driven, or external and are generally poor candidates for coverage analysis. You'll be prompted to exclude them before the run starts:
+
+```
+testprune: found folders that may be slow or integration-heavy:
+  test/integration
+  test/selenium
+Include them in this run? [y/N]:
+```
+
+Answering `N` (the default) scopes the run to the remaining folders using `rails test`. Answering `y` proceeds with the normal autodetected command.
 
 Writes `tmp/.testprune/run.json` — per-test coverage deltas and wall times. This is the only step that boots your suite.
 
@@ -333,14 +349,18 @@ testprune report -s app -s lib
 ### Rails app
 
 ```sh
-# Run a specific directory (never run the whole suite without a path)
-testprune run -s app -s lib -s packs -- bundle exec rails test test/models/
+# Run with no args — testprune will prompt to exclude selenium/integration folders
+testprune run -s app -s lib
 
-# Multiple passes — capture incrementally by domain, analyze together
-testprune run -s app -- bundle exec rails test test/models/
-testprune run -s app -- bundle exec rails test test/controllers/
-# run.json is overwritten on each `testprune run`; analyze each pass separately
+# Scope to specific directories (positional args, no -- needed)
+testprune run -s app -s lib test/models
+testprune run -s app -s lib test/models test/jobs test/services
+
+# Explicit command if you need full control
+testprune run -s app -s lib -s packs -- bundle exec rails test test/models/
 ```
+
+> **Note:** `run.json` is overwritten on each `testprune run`. Run report/apply after each capture pass.
 
 ### Rails app with Spring
 
