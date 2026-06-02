@@ -39,6 +39,18 @@ module Testprune
       ok
     end
 
+    def command_for_paths(paths)
+      bundler = File.exist?(File.join(@config.root, 'Gemfile'))
+      prefix  = bundler ? %w[bundle exec] : []
+      if File.directory?(File.join(@config.root, 'spec'))
+        prefix + %w[rspec] + paths
+      elsif File.exist?(File.join(@config.root, 'bin', 'rails'))
+        prefix + %w[rails test] + paths
+      else
+        prefix + %w[rake test] + paths
+      end
+    end
+
     private
 
     def env

@@ -9,6 +9,8 @@ module Testprune
   #   report  analyzes run.json and prints grouped candidates (read-only)
   #   apply   prompts for approval, then writes a removal patch (never edits in place)
   class CLI
+    NOISY_PATTERNS = %w[selenium request piper integration].freeze
+
     BANNER = <<~TXT
       testprune — audit a Ruby test suite for redundant coverage
 
@@ -90,10 +92,39 @@ module Testprune
 
     def cmd_run(argv)
       cmd_argv, test_command = split_test_command(argv)
-      opts, = parse_options(cmd_argv)
+      opts, paths = parse_options(cmd_argv)
       apply_config(opts)
       require_relative 'runner'
-      Runner.new(Testprune.config).call(test_command)
+      runner = Runner.new(Testprune.config)
+      if test_command.nil? && paths.empty?
+        test_command = prompt_noisy_exclusions(runner)
+      elsif test_command.nil?
+        test_command = runner.command_for_paths(paths)
+      end
+      runner.call(test_command)
+    end
+
+    def prompt_noisy_exclusions(runner)
+      test_dir = File.join(Testprune.config.root, 'test')
+      return nil unless File.directory?(test_dir)
+
+      all_subdirs = Dir.children(test_dir)
+                       .select { |d| File.directory?(File.join(test_dir, d)) }
+                       .sort
+      noisy = all_subdirs.select { |d| NOISY_PATTERNS.any? { |p| d.downcase.include?(p) } }
+      return nil if noisy.empty?
+
+      warn("testprune: found folders that may be slow or integration-heavy:")
+      noisy.each { |d| warn("  test/#{d}") }
+      $stderr.print("Include them in this run? [y/N]: ")
+      answer = $stdin.gets&.strip&.downcase
+
+      return nil if %w[y yes].include?(answer)
+
+      kept = (all_subdirs - noisy).map { |d| "test/#{d}" }
+      return nil if kept.empty?
+
+      runner.command_for_paths(kept)
     end
 
     def cmd_report(argv)
