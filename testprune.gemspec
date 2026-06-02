@@ -13,10 +13,10 @@ Gem::Specification.new do |spec|
                      'coverage onto semantic units (methods, branches, conditions), find redundant tests grouped ' \
                      'by duplication type with confidence levels, and emit a removal patch — never deleting a ' \
                      'test that would open a coverage gap. Report + patch only; asks for approval before any change.'
-  spec.homepage    = 'https://github.com/appfolio/testprune'
-  spec.license     = 'Nonstandard'
+  spec.homepage    = 'https://github.com/seth-macpherson/testprune'
+  spec.license     = 'MIT'
 
-  spec.files = Dir['lib/**/*.rb'] + Dir['exe/*'] + %w[README.md]
+  spec.files = Dir['lib/**/*.rb'] + Dir['exe/*'] + Dir['assets/*'] + %w[README.md LICENSE]
   spec.bindir      = 'exe'
   spec.executables = ['testprune']
   spec.require_paths = ['lib']
