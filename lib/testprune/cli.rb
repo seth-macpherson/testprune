@@ -15,14 +15,16 @@ module Testprune
       testprune — audit a Ruby test suite for redundant coverage
 
       Usage:
-        testprune run [options] [-- <test command>]
+        testprune scan [options] [-- <test command>]
         testprune report [options]
         testprune apply [options]
+        testprune prune [options] [-- <test command>]
 
       Commands:
-        run      Run the target suite instrumented; capture per-test coverage + timing
+        scan     Run the target suite instrumented; capture per-test coverage + timing
         report   Analyze captured data and print removal candidates (read-only)
         apply    Review candidates, ask for approval, emit a git-applyable patch
+        prune    Run scan + apply in one step (the full workflow)
 
       Options:
         -s, --source PATH      Source dir to analyze (repeatable; default: app, lib)
@@ -42,9 +44,10 @@ module Testprune
       argv = argv.dup
       command = argv.shift
       case command
-      when 'run'            then cmd_run(argv)
+      when 'scan'           then cmd_scan(argv)
       when 'report'         then cmd_report(argv)
       when 'apply'          then cmd_apply(argv)
+      when 'prune'          then cmd_prune(argv)
       when '-v', '--version' then puts(Testprune::VERSION)
       when nil, '-h', '--help' then puts(BANNER)
       else
@@ -90,7 +93,7 @@ module Testprune
       end
     end
 
-    def cmd_run(argv)
+    def cmd_scan(argv)
       cmd_argv, test_command = split_test_command(argv)
       opts, paths = parse_options(cmd_argv)
       apply_config(opts)
@@ -125,6 +128,11 @@ module Testprune
       return nil if kept.empty?
 
       runner.command_for_paths(kept)
+    end
+
+    def cmd_prune(argv)
+      cmd_scan(argv)
+      cmd_apply([])
     end
 
     def cmd_report(argv)
