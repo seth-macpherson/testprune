@@ -29,7 +29,7 @@ module Testprune
       end
 
       unless File.exist?(@config.run_file)
-        raise Error, "no captured data at #{@config.run_file}. Run `testprune run` first."
+        raise Error, "no coverage data found. Run `testprune run` first to capture per-test coverage."
       end
 
       run = begin
