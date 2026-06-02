@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+CONFIG="$REPO_ROOT/.push-gem-config"
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+
+die()  { echo "push-gem: $*" >&2; exit 1; }
+info() { echo "push-gem: $*"; }
+
+require_op() {
+  command -v op &>/dev/null || \
+    die "1Password CLI (op) not found. Install: https://developer.1password.com/docs/cli/"
+}
+
+# ── first-run: select 1Password item ─────────────────────────────────────────
+
+setup_item() {
+  echo ""
+  echo "push-gem: first run — which 1Password item holds your RubyGems OTP?"
+  echo ""
+  read -rp "  Search term (leave blank to list all): " term
+  echo ""
+
+  raw_json=$(op item list --format json 2>/dev/null)
+
+  if [[ -n "$term" ]]; then
+    items_json=$(ruby -rjson -e "
+      items = JSON.parse(STDIN.read)
+      t = ARGV[0].downcase
+      puts items.select { |i| i['title'].downcase.include?(t) }.to_json
+    " -- "$term" <<< "$raw_json")
+  else
+    items_json="$raw_json"
+  fi
+
+  count=$(ruby -rjson -e "puts JSON.parse(STDIN.read).length" <<< "$items_json")
+  [[ "$count" -gt 0 ]] || die "No 1Password items found${term:+ matching '$term'}."
+
+  # Print numbered list: index  title  vault
+  ruby -rjson -e "
+    items = JSON.parse(STDIN.read)
+    items.each_with_index do |item, i|
+      vault = item.dig('vault', 'name') || ''
+      printf \"  %3d.  %-45s  %s\n\", i + 1, item['title'], vault
+    end
+  " <<< "$items_json"
+
+  echo ""
+  read -rp "  Enter number: " selection
+
+  read -r item_id item_title < <(ruby -rjson -e "
+    items = JSON.parse(STDIN.read)
+    idx = ARGV[0].to_i - 1
+    abort 'Invalid selection' unless (0...items.length).include?(idx)
+    puts [items[idx]['id'], items[idx]['title']].join(' ')
+  " -- "$selection" <<< "$items_json")
+
+  echo ""
+  info "Verifying OTP for '$item_title'..."
+  op item get "$item_id" --otp &>/dev/null || \
+    die "Could not fetch OTP for '$item_title'. Does it have a one-time password field?"
+
+  {
+    echo "# push-gem config — git-ignored, do not commit"
+    echo "item_id=$item_id"
+    echo "item_title=$item_title"
+  } > "$CONFIG"
+
+  info "Config saved to .push-gem-config"
+  echo ""
+}
+
+# ── main ──────────────────────────────────────────────────────────────────────
+
+require_op
+
+[[ -f "$CONFIG" ]] || setup_item
+
+item_id=$(grep '^item_id='    "$CONFIG" | cut -d= -f2)
+item_title=$(grep '^item_title=' "$CONFIG" | cut -d= -f2-)
+
+cd "$REPO_ROOT"
+
+# Build — suppress rdoc noise, show only the success line
+info "Building gem..."
+build_out=$(rv run gem build testprune.gemspec 2>&1) || die "gem build failed:\n$build_out"
+echo "$build_out" | grep -E 'Successfully built|Version:|File:'
+
+gem_file=$(ls -t "$REPO_ROOT"/testprune-*.gem 2>/dev/null | head -1)
+[[ -n "$gem_file" ]] || die "No .gem file found after build."
+version=$(basename "$gem_file" .gem | sed 's/testprune-//')
+
+# Fetch OTP as late as possible to avoid expiry during build
+info "Fetching OTP from 1Password ($item_title)..."
+otp=$(op item get "$item_id" --otp)
+
+info "Pushing testprune $version to RubyGems..."
+rv run gem push "$gem_file" --otp "$otp"
