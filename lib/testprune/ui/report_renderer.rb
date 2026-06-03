@@ -101,9 +101,7 @@ module Testprune
           lines << "    #{styled('kept by: ', Styles::DIM_TEXT)}#{styled(candidate.kept_by.join(', '), Styles::DIM_TEXT)}"
         end
 
-        covers = fp.units.map { |id| @result.label_for(id) }.sort
-        covers_text = covers.size <= 4 ? covers.join(' · ') : "#{covers.first(4).join(' · ')} (+#{covers.size - 4} more)"
-        lines << "    #{styled('covers: ', Styles::DIM_TEXT)}#{styled(covers_text, Styles::DIM_TEXT)}"
+        lines.concat(coverage_detail_lines(candidate, fp))
 
         safety = case candidate.safe
                  when true  then styled('    ✓ safe — every covered unit is retained by another test', Styles::SAFE_LINE)
@@ -136,6 +134,39 @@ module Testprune
       def nothing_found_section
         msg = '  Nothing redundant found — suite looks clean.'
         tty? ? Styles::SUCCESS_BOX.render(msg) : msg
+      end
+
+      def coverage_detail_lines(candidate, fp)
+        case candidate.group
+        when :identical
+          [coverage_line('both cover', fp.units)]
+        when :subset
+          keeper = keeper_footprint(candidate)
+          lines = [coverage_line('candidate covers', fp.units)]
+          if keeper
+            extra = keeper.units - fp.units
+            lines << coverage_line('keeper adds', extra) unless extra.empty?
+          end
+          lines
+        else
+          [coverage_line('covers', fp.units)]
+        end
+      end
+
+      def coverage_line(label, units)
+        "    #{styled("#{label}: ", Styles::DIM_TEXT)}#{styled(format_units(units), Styles::DIM_TEXT)}"
+      end
+
+      def keeper_footprint(candidate)
+        return nil if candidate.kept_by.empty?
+        return nil unless @result.respond_to?(:detector_result)
+
+        @result.detector_result.footprints.find { |f| f.id == candidate.kept_by.first }
+      end
+
+      def format_units(units)
+        labels = units.map { |id| @result.label_for(id) }.sort
+        labels.size <= 4 ? labels.join(' · ') : "#{labels.first(4).join(' · ')} (+#{labels.size - 4} more)"
       end
 
       def cta_line

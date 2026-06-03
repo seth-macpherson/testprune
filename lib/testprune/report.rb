@@ -46,13 +46,37 @@ module Testprune
       out << "      at: #{fp.file}:#{fp.line}" if fp.file
       out << "      reason: #{candidate.reason}"
       out << "      kept by: #{candidate.kept_by.join(', ')}" unless candidate.kept_by.empty?
-      out << "      covers: #{covered_labels(fp)}"
+      out.concat(coverage_text_lines(candidate, fp))
       out << "      #{safety_line(candidate)}"
       out
     end
 
-    def covered_labels(footprint)
-      labels = footprint.units.map { |id| @result.label_for(id) }.sort
+    def coverage_text_lines(candidate, fp)
+      case candidate.group
+      when :identical
+        ["      both cover: #{covered_labels(fp.units)}"]
+      when :subset
+        keeper = find_keeper(candidate)
+        lines = ["      candidate covers: #{covered_labels(fp.units)}"]
+        if keeper
+          extra = keeper.units - fp.units
+          lines << "      keeper adds: #{covered_labels(extra)}" unless extra.empty?
+        end
+        lines
+      else
+        ["      covers: #{covered_labels(fp.units)}"]
+      end
+    end
+
+    def find_keeper(candidate)
+      return nil if candidate.kept_by.empty?
+      return nil unless @result.respond_to?(:detector_result)
+
+      @result.detector_result.footprints.find { |f| f.id == candidate.kept_by.first }
+    end
+
+    def covered_labels(units)
+      labels = units.map { |id| @result.label_for(id) }.sort
       labels.size <= 4 ? labels.join('; ') : "#{labels.first(4).join('; ')} (+#{labels.size - 4} more)"
     end
 
