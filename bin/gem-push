@@ -48,6 +48,39 @@ item_name=$(grep '^item_name=' "$CONFIG" | cut -d= -f2-)
 
 cd "$REPO_ROOT"
 
+# ── version bump ──────────────────────────────────────────────────────────────
+
+VERSION_FILE="$REPO_ROOT/lib/testprune/version.rb"
+current_version=$(grep "VERSION = " "$VERSION_FILE" | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+[[ -n "$current_version" ]] || die "Could not parse current version from $VERSION_FILE"
+
+IFS='.' read -r v_major v_minor v_patch <<< "$current_version"
+
+echo ""
+info "Current version: $current_version"
+echo "  1) patch  → $v_major.$v_minor.$((v_patch + 1))"
+echo "  2) minor  → $v_major.$((v_minor + 1)).0"
+echo "  3) major  → $((v_major + 1)).0.0"
+echo "  4) keep   → $current_version (no bump)"
+echo ""
+read -rp "  Bump type [1]: " bump_choice
+bump_choice="${bump_choice:-1}"
+
+case "$bump_choice" in
+  1) new_version="$v_major.$v_minor.$((v_patch + 1))" ;;
+  2) new_version="$v_major.$((v_minor + 1)).0" ;;
+  3) new_version="$((v_major + 1)).0.0" ;;
+  4) new_version="$current_version" ;;
+  *) die "Invalid choice '$bump_choice'." ;;
+esac
+
+if [[ "$new_version" != "$current_version" ]]; then
+  sed -i '' "s/VERSION = '$current_version'/VERSION = '$new_version'/" "$VERSION_FILE"
+  info "Version bumped: $current_version → $new_version"
+else
+  info "Version unchanged: $current_version"
+fi
+
 # Build — suppress rdoc noise, show only the success line
 info "Building gem..."
 build_out=$(rv run gem build testprune.gemspec 2>&1) || die "gem build failed:\n$build_out"
