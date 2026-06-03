@@ -122,29 +122,45 @@ testprune report --json       # machine-readable (for CI dashboards)
 testprune report -s app -s lib
 ```
 
-**Example output** (against the bundled calculator fixture):
+**Example output** (against the bundled calculator fixture). In an interactive terminal the report is colorized and boxed via lipgloss:
+
+![testprune report — styled terminal output](assets/report-example.svg)
+
+<details>
+<summary>Plain-text (<code>NO_COLOR</code>) version</summary>
 
 ```
-testprune — test coverage redundancy report
-Suite: 4 test(s), framework=minitest
+  testprune — coverage redundancy report
+  4 tests · minitest
+────────────────────────────────────────────────────────────────
 
-HIGH confidence — safe to remove: 1
-  [identical] CalculatorTest#test_add_again
-      at: test/calculator_test.rb:16
-      reason: identical coverage to CalculatorTest#test_add
-      kept by: CalculatorTest#test_add
-      covers: Calculator#add (lib/calculator.rb:4)
-      ✓ safe — every covered unit remains covered by a retained test
+  ● HIGH confidence — safe to remove  (1)
+  ──────────────────────────────────────────────────────────────
 
-MEDIUM confidence — review (structural duplicates): 1
-  [structural] CalculatorTest#test_positive
-      at: test/calculator_test.rb:20
-      reason: test body structurally identical to CalculatorTest#test_nonpositive
-      · review-only — not auto-applied
+    [identical]  CalculatorTest#test_add_again
+    at: test/calculator_test.rb:16
+    reason: identical coverage to CalculatorTest#test_add
+    kept by: CalculatorTest#test_add
+    both cover: Calculator#add (lib/calculator.rb:4)
+    ✓ safe — every covered unit is retained by another test
 
-Estimated CI savings:
-  1 test(s), 0.0132s (~85.7% of 0.0154s test time)
+  ● MEDIUM confidence — review  (1)
+  ──────────────────────────────────────────────────────────────
+
+    [structural]  CalculatorTest#test_positive
+    at: test/calculator_test.rb:20
+    reason: test body structurally identical to CalculatorTest#test_nonpositive
+    covers: Calculator#sign (lib/calculator.rb:8)
+    · review-only — not auto-applied
+
+  Estimated CI savings
+  1 test(s)  ·  0.0132s saved  ·  ~85.7% of suite
+  Note: wall-clock savings lower on parallel CI runners
+
+  Run testprune apply to review and emit a removal patch.
 ```
+
+</details>
 
 ### Step 3 — Apply
 
