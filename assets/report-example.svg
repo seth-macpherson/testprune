@@ -1,5 +1,5 @@
-<svg viewBox="0 0 661 668" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="testprune report — styled terminal output">
-  <rect width="661" height="668" fill="#0d1117" rx="14"/>
+<svg viewBox="0 0 598 648" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="testprune report — styled terminal output">
+  <rect width="598" height="648" fill="#0d1117" rx="14"/>
   <g font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="13" xml:space="preserve">
     <text x="22" y="34"><tspan fill="#7D56F4">╭──────────────────────────────────────────╮</tspan></text>
     <text x="22" y="54"><tspan fill="#7D56F4">│ </tspan><tspan fill="#E2E8F0">  testprune — coverage redundancy report</tspan><tspan fill="#E2E8F0"> </tspan><tspan fill="#7D56F4">│</tspan></text>
@@ -8,23 +8,22 @@
     <text x="22" y="134"><tspan fill="#22C55E" font-weight="700">  ● HIGH confidence — safe to remove</tspan><tspan fill="#9CA3AF">  (1)</tspan></text>
     <text x="22" y="154"><tspan fill="#3D3D5C">  ──────────────────────────────────────────────────────────────</tspan></text>
     <text x="22" y="194"><tspan fill="#7D56F4">    [identical]</tspan><tspan fill="#E2E8F0">  CalculatorTest#test_add_again</tspan></text>
-    <text x="22" y="214"><tspan fill="#3D3D5C">    at: </tspan><tspan fill="#9CA3AF">test/calculator_test.rb:16</tspan></text>
-    <text x="22" y="234"><tspan fill="#3D3D5C">    reason: </tspan><tspan fill="#9CA3AF">identical coverage to CalculatorTest#test_add</tspan></text>
-    <text x="22" y="254"><tspan fill="#3D3D5C">    kept by: CalculatorTest#test_add</tspan></text>
-    <text x="22" y="274"><tspan fill="#3D3D5C">    both cover: Calculator#add (lib/calculator.rb:4)</tspan></text>
-    <text x="22" y="294"><tspan fill="#22C55E">    ✓ safe — every covered unit is retained by another test</tspan></text>
-    <text x="22" y="334"><tspan fill="#F59E0B" font-weight="700">  ● MEDIUM confidence — review</tspan><tspan fill="#9CA3AF">  (1)</tspan></text>
-    <text x="22" y="354"><tspan fill="#3D3D5C">  ──────────────────────────────────────────────────────────────</tspan></text>
-    <text x="22" y="394"><tspan fill="#7D56F4">    [structural]</tspan><tspan fill="#E2E8F0">  CalculatorTest#test_positive</tspan></text>
-    <text x="22" y="414"><tspan fill="#3D3D5C">    at: </tspan><tspan fill="#9CA3AF">test/calculator_test.rb:20</tspan></text>
-    <text x="22" y="434"><tspan fill="#3D3D5C">    reason: </tspan><tspan fill="#9CA3AF">test body structurally identical to CalculatorTest#test_nonpositive</tspan></text>
-    <text x="22" y="454"><tspan fill="#3D3D5C">    covers: Calculator#sign (lib/calculator.rb:8)</tspan></text>
-    <text x="22" y="474"><tspan fill="#3D3D5C">    · review-only — not auto-applied</tspan></text>
-    <text x="22" y="514"><tspan fill="#7D56F4">╭─────────────────────────────────────────────────────────╮</tspan></text>
-    <text x="22" y="534"><tspan fill="#7D56F4">│ </tspan><tspan fill="#E2E8F0">  Estimated CI savings</tspan><tspan fill="#E2E8F0">                                  </tspan><tspan fill="#7D56F4">│</tspan></text>
-    <text x="22" y="554"><tspan fill="#7D56F4">│ </tspan><tspan fill="#22C55E">  1 test(s)</tspan><tspan fill="#9CA3AF">  ·  </tspan><tspan fill="#22C55E">0.0132s saved</tspan><tspan fill="#9CA3AF">  ·  </tspan><tspan fill="#22C55E">~85.7% of suite</tspan><tspan fill="#E2E8F0">       </tspan><tspan fill="#7D56F4">│</tspan></text>
-    <text x="22" y="574"><tspan fill="#7D56F4">│ </tspan><tspan fill="#9CA3AF">  Note: wall-clock savings lower on parallel CI runners</tspan><tspan fill="#E2E8F0"> </tspan><tspan fill="#7D56F4">│</tspan></text>
-    <text x="22" y="594"><tspan fill="#7D56F4">╰─────────────────────────────────────────────────────────╯</tspan></text>
-    <text x="22" y="634"><tspan fill="#9CA3AF">  Run </tspan><tspan fill="#7D56F4">testprune apply</tspan><tspan fill="#9CA3AF"> to review and emit a removal patch.</tspan></text>
+    <text x="22" y="214"><tspan fill="#3D3D5C">    remove: </tspan><tspan fill="#9CA3AF">test/calculator_test.rb:16</tspan></text>
+    <text x="22" y="234"><tspan fill="#3D3D5C">    keep:   </tspan><tspan fill="#9CA3AF">test/calculator_test.rb:11</tspan><tspan fill="#E2E8F0">  </tspan><tspan fill="#3D3D5C">CalculatorTest#test_add</tspan></text>
+    <text x="22" y="254"><tspan fill="#3D3D5C">    covers 1 unit — all retained by the keeper</tspan></text>
+    <text x="22" y="274"><tspan fill="#22C55E">    ✓ safe — every covered unit is retained by another test</tspan></text>
+    <text x="22" y="314"><tspan fill="#F59E0B" font-weight="700">  ● MEDIUM confidence — review</tspan><tspan fill="#9CA3AF">  (1)</tspan></text>
+    <text x="22" y="334"><tspan fill="#3D3D5C">  ──────────────────────────────────────────────────────────────</tspan></text>
+    <text x="22" y="374"><tspan fill="#7D56F4">    [structural]</tspan><tspan fill="#E2E8F0">  CalculatorTest#test_positive</tspan></text>
+    <text x="22" y="394"><tspan fill="#3D3D5C">    remove: </tspan><tspan fill="#9CA3AF">test/calculator_test.rb:20</tspan></text>
+    <text x="22" y="414"><tspan fill="#3D3D5C">    keep:   </tspan><tspan fill="#9CA3AF">test/calculator_test.rb:25</tspan><tspan fill="#E2E8F0">  </tspan><tspan fill="#3D3D5C">CalculatorTest#test_nonpositive</tspan></text>
+    <text x="22" y="434"><tspan fill="#3D3D5C">    covers 2 units</tspan></text>
+    <text x="22" y="454"><tspan fill="#3D3D5C">    · review-only — not auto-applied</tspan></text>
+    <text x="22" y="494"><tspan fill="#7D56F4">╭─────────────────────────────────────────────────────────╮</tspan></text>
+    <text x="22" y="514"><tspan fill="#7D56F4">│ </tspan><tspan fill="#E2E8F0">  Estimated CI savings</tspan><tspan fill="#E2E8F0">                                  </tspan><tspan fill="#7D56F4">│</tspan></text>
+    <text x="22" y="534"><tspan fill="#7D56F4">│ </tspan><tspan fill="#22C55E">  1 test(s)</tspan><tspan fill="#9CA3AF">  ·  </tspan><tspan fill="#22C55E">0.0000s saved</tspan><tspan fill="#9CA3AF">  ·  </tspan><tspan fill="#22C55E">~20.3% of suite</tspan><tspan fill="#E2E8F0">       </tspan><tspan fill="#7D56F4">│</tspan></text>
+    <text x="22" y="554"><tspan fill="#7D56F4">│ </tspan><tspan fill="#9CA3AF">  Note: wall-clock savings lower on parallel CI runners</tspan><tspan fill="#E2E8F0"> </tspan><tspan fill="#7D56F4">│</tspan></text>
+    <text x="22" y="574"><tspan fill="#7D56F4">╰─────────────────────────────────────────────────────────╯</tspan></text>
+    <text x="22" y="614"><tspan fill="#9CA3AF">  Run </tspan><tspan fill="#7D56F4">testprune apply</tspan><tspan fill="#9CA3AF"> to review and emit a removal patch.</tspan></text>
   </g>
 </svg>

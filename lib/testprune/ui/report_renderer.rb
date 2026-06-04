@@ -90,18 +90,19 @@ module Testprune
 
       def candidate_lines(candidate)
         fp = candidate.footprint
+        keeper = keeper_footprint(candidate)
         lines = []
 
         group_badge = styled("[#{GROUP_LABELS[candidate.group] || candidate.group}]", Styles::PURPLE_TEXT)
         lines << "    #{group_badge}  #{fp.id}"
-        lines << "    #{styled('at: ', Styles::DIM_TEXT)}#{styled("#{fp.file}:#{fp.line}", Styles::META_TEXT)}" if fp.file
-        lines << "    #{styled('reason: ', Styles::DIM_TEXT)}#{styled(candidate.reason, Styles::META_TEXT)}"
-
-        unless candidate.kept_by.empty?
-          lines << "    #{styled('kept by: ', Styles::DIM_TEXT)}#{styled(candidate.kept_by.join(', '), Styles::DIM_TEXT)}"
+        # Compare block: the two tests under review, both as relative file:line.
+        lines << "    #{styled('remove:', Styles::DIM_TEXT)} #{styled(location(fp), Styles::META_TEXT)}" if fp.file
+        if keeper
+          lines << "    #{styled('keep:  ', Styles::DIM_TEXT)} #{styled(location(keeper), Styles::META_TEXT)}" \
+                   "  #{styled(keeper.id, Styles::DIM_TEXT)}"
         end
 
-        lines.concat(coverage_detail_lines(candidate, fp))
+        lines.concat(coverage_detail_lines(candidate, fp, keeper))
 
         safety = case candidate.safe
                  when true  then styled('    ✓ safe — every covered unit is retained by another test', Styles::SAFE_LINE)
@@ -136,25 +137,36 @@ module Testprune
         tty? ? Styles::SUCCESS_BOX.render(msg) : msg
       end
 
-      def coverage_detail_lines(candidate, fp)
+      # The full per-unit coverage list (a 60+ item dump on large controller tests)
+      # carries no decision value for identical matches — both tests cover exactly
+      # the same units by construction, and the safety check guarantees the keeper
+      # retains them. So we summarize as a count. Only the subset *delta* (what the
+      # keeper covers beyond the candidate) earns a labeled list, since that's the
+      # reason the keeper is worth keeping.
+      def coverage_detail_lines(candidate, fp, keeper)
         case candidate.group
         when :identical
-          [coverage_line('both cover', fp.units)]
+          [count_line("covers #{unit_word(fp.units.size)} — all retained by the keeper")]
         when :subset
-          keeper = keeper_footprint(candidate)
-          lines = [coverage_line('candidate covers', fp.units)]
-          if keeper
-            extra = keeper.units - fp.units
-            lines << coverage_line('keeper adds', extra) unless extra.empty?
-          end
-          lines
+          extra = keeper ? (keeper.units - fp.units) : []
+          extra.empty? ? [count_line("covers #{unit_word(fp.units.size)}")]
+                       : ["    #{styled('keeper adds: ', Styles::DIM_TEXT)}#{styled(format_units(extra), Styles::DIM_TEXT)}"]
         else
-          [coverage_line('covers', fp.units)]
+          [count_line("covers #{unit_word(fp.units.size)}")]
         end
       end
 
-      def coverage_line(label, units)
-        "    #{styled("#{label}: ", Styles::DIM_TEXT)}#{styled(format_units(units), Styles::DIM_TEXT)}"
+      def count_line(text) = "    #{styled(text, Styles::DIM_TEXT)}"
+
+      def unit_word(n) = "#{n} unit#{'s' if n != 1}"
+
+      def location(fp) = "#{relpath(fp.file)}:#{fp.line}"
+
+      def relpath(file)
+        root = @result.run['root']
+        return file unless file && root && file.start_with?("#{root}/")
+
+        file[(root.length + 1)..]
       end
 
       def keeper_footprint(candidate)

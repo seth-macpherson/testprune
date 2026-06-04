@@ -112,7 +112,7 @@ testprune prune test/models test/jobs -s app -s lib
 testprune prune -- bundle exec rails test test/models/
 ```
 
-`prune` runs `scan` to capture coverage data, then immediately runs `apply` — which prints the report and prompts before writing any patch. Use this when you want the full workflow without running three separate commands.
+`prune` runs `scan` to capture coverage data, then immediately runs `apply` — which opens the guided reviewer (or, non-interactively, prompts) before writing any patch. Use this when you want the full workflow without running three separate commands.
 
 ### Step 2 — Report
 
@@ -138,23 +138,22 @@ testprune report -s app -s lib
   ──────────────────────────────────────────────────────────────
 
     [identical]  CalculatorTest#test_add_again
-    at: test/calculator_test.rb:16
-    reason: identical coverage to CalculatorTest#test_add
-    kept by: CalculatorTest#test_add
-    both cover: Calculator#add (lib/calculator.rb:4)
+    remove: test/calculator_test.rb:16
+    keep:   test/calculator_test.rb:11  CalculatorTest#test_add
+    covers 1 unit — all retained by the keeper
     ✓ safe — every covered unit is retained by another test
 
   ● MEDIUM confidence — review  (1)
   ──────────────────────────────────────────────────────────────
 
     [structural]  CalculatorTest#test_positive
-    at: test/calculator_test.rb:20
-    reason: test body structurally identical to CalculatorTest#test_nonpositive
-    covers: Calculator#sign (lib/calculator.rb:8)
+    remove: test/calculator_test.rb:20
+    keep:   test/calculator_test.rb:25  CalculatorTest#test_nonpositive
+    covers 2 units
     · review-only — not auto-applied
 
   Estimated CI savings
-  1 test(s)  ·  0.0132s saved  ·  ~85.7% of suite
+  1 test(s)  ·  0.0000s saved  ·  ~20.3% of suite
   Note: wall-clock savings lower on parallel CI runners
 
   Run testprune apply to review and emit a removal patch.
@@ -168,14 +167,35 @@ testprune report -s app -s lib
 testprune apply
 ```
 
-The tool reprints the full report, then prompts:
+In an interactive terminal, `apply` opens a **guided reviewer** rather than dumping the whole report. It walks the safely-removable tests one *cluster* at a time — every test that duplicates a single keeper is grouped into one decision — starting with the highest-confidence `identical` matches:
 
 ```
-Apply 1 HIGH-confidence, safety-verified removal(s) as a patch?
-(MEDIUM/LOW review-only candidates are NOT patched automatically.) [y/N]
+Identical coverage   cluster 1 / 1   0 accepted
+████████████████████████████ 1/1
+
+ KEEP     test/calculator_test.rb:11
+          #test_add
+
+ REMOVE   1 test with identical coverage — all 1 unit retained by the keeper
+            :16  #test_add_again
+
+✓ safe — every covered unit remains covered by the kept test
+
+[a] accept & remove   [s] skip   [d] diff vs keeper   [q] quit & write
 ```
 
-Answering `y` writes `tmp/.testprune/removal.patch`. **No files are modified yet.**
+- **`a`** accept the whole cluster · **`s`** skip it · **`d`** view a side-by-side diff of the two test bodies · **`q`** stop and write a patch for whatever you've accepted so far.
+- Review-only candidates (structural / overlap) are never auto-patched; they're summarized at the end — inspect them with `testprune report`.
+
+For non-interactive use (CI, pipes):
+
+```sh
+testprune apply --yes     # accept all safe removals without prompting
+```
+
+When stdout isn't a TTY and `--yes` isn't given, `apply` falls back to printing the report and a single `[y/N]` prompt.
+
+Accepted removals are written to `tmp/.testprune/removal.patch`. **No files are modified yet.**
 
 ```sh
 git apply --check tmp/.testprune/removal.patch   # dry-run first

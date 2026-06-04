@@ -34,6 +34,7 @@ module Testprune
                                noise and subtract them (0..1; default 0.5; 0 to disable)
             --json             Emit machine-readable JSON (report only)
         -V, --verbose          Show raw test output during scan (disables progress display)
+        -y, --yes              Skip interactive review; accept all safe removals (apply)
         -h, --help             Show this help
         -v, --version          Show version
     TXT
@@ -81,6 +82,7 @@ module Testprune
         o.on('--baseline FRAC', Float) { |v| opts[:baseline] = v }
         o.on('--json')              { opts[:json] = true }
         o.on('-V', '--verbose')     { opts[:verbose] = true }
+        o.on('-y', '--yes')         { opts[:yes] = true }
         o.on('-h', '--help')        { puts(BANNER); exit(0) }
       end
       rest = parser.parse(argv)
@@ -173,40 +175,54 @@ module Testprune
       apply_config(opts)
       require_relative 'analysis'
       result = Analysis.new(Testprune.config).call
-      require_relative 'report'
-      puts(Report.new(result).render)
 
       approved = result.approved_removals
       if approved.empty?
+        require_relative 'report'
+        puts(Report.new(result).render)
         msg = "  Nothing safe to remove. No patch written."
         puts(UI.tty?($stdout) ? UI::Styles::SUCCESS_BOX.render(msg) : "\n#{msg.strip}")
         return nil
       end
 
-      # Styled confirmation prompt
-      if UI.tty?($stdout)
-        puts
-        puts "  Apply #{UI::Styles::GREEN_TEXT.render(approved.size.to_s)} HIGH-confidence removal(s) as a patch?"
-        puts "  #{UI::Styles::DIM_TEXT.render('(MEDIUM/LOW review-only candidates are NOT patched.)')}"
-        print "  #{UI::Styles::PURPLE_TEXT.render('[y/N]')} > "
-      else
-        print("\nApply #{approved.size} HIGH-confidence, safety-verified removal(s) as a patch?\n" \
-              "(MEDIUM/LOW review-only candidates are NOT patched automatically.) [y/N] ")
-      end
+      accepted =
+        if opts[:yes]
+          approved
+        elsif UI.tty?($stdout)
+          require_relative 'ui/reviewer'
+          UI::Reviewer.new(result).run
+        else
+          noninteractive_confirm(result, approved)
+        end
 
-      answer = $stdin.gets&.strip&.downcase
-      unless %w[y yes].include?(answer)
-        msg = "  Aborted — no patch written."
-        puts(UI.tty?($stdout) ? UI::Styles::DIM_TEXT.render(msg) : 'Aborted. No patch written.')
-        return false
+      return false if accepted == false # explicit abort at the non-interactive prompt
+      if accepted.nil? || accepted.empty?
+        msg = "  Nothing accepted — no patch written."
+        puts(UI.tty?($stdout) ? UI::Styles::DIM_TEXT.render(msg) : msg.strip)
+        return nil
       end
 
       require_relative 'patch_writer'
-      path = PatchWriter.new(Testprune.config).write(approved)
+      path = PatchWriter.new(Testprune.config).write(accepted)
+      print_patch_written(path, accepted.size)
+      path
+    end
 
+    # Non-TTY (piped/CI without --yes): show the full report and ask once.
+    # Returns the approved set on yes, or false on abort.
+    def noninteractive_confirm(result, approved)
+      require_relative 'report'
+      puts(Report.new(result).render)
+      print("\nApply #{approved.size} HIGH-confidence, safety-verified removal(s) as a patch?\n" \
+            "(MEDIUM/LOW review-only candidates are NOT patched automatically.) [y/N] ")
+      answer = $stdin.gets&.strip&.downcase
+      %w[y yes].include?(answer) ? approved : false
+    end
+
+    def print_patch_written(path, count)
       if UI.tty?($stdout)
         box = [
-          "  #{UI::Styles::GREEN_TEXT.render('✓')}  Patch written",
+          "  #{UI::Styles::GREEN_TEXT.render('✓')}  Patch written — #{count} test(s)",
           "     #{path}",
           "     #{UI::Styles::DIM_TEXT.render('Apply with:')}  " \
           "#{UI::Styles::PURPLE_TEXT.render("git apply #{path}")}"
@@ -216,8 +232,6 @@ module Testprune
         puts("Wrote #{path}")
         puts("Review it, then apply with:  git apply #{path}")
       end
-
-      path
     end
   end
 end

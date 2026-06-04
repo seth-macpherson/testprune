@@ -87,12 +87,15 @@ module Testprune
         assert_includes output, 'safe'
       end
 
-      def test_identical_shows_both_cover
+      # Identical matches summarize coverage as a count — the full per-unit dump
+      # carries no decision value (both tests cover the same units by construction)
+      # and is what blew past the screen width on large suites.
+      def test_identical_summarizes_coverage_as_count
         c = high_candidate
         result = make_result(candidates: [c], approved: [c])
         output = ReportRenderer.new(result).render
-        assert_includes output, 'both cover'
-        refute_includes output, 'covers: '
+        assert_includes output, 'all retained by the keeper'
+        refute_includes output, 'both cover', 'should not dump the per-unit coverage list'
       end
 
       def test_subset_shows_candidate_covers_and_keeper_adds
@@ -118,8 +121,11 @@ module Testprune
         stub.define_singleton_method(:detector_result)   { dr }
 
         output = ReportRenderer.new(stub).render
-        assert_includes output, 'candidate covers'
-        assert_includes output, 'keeper adds'
+        assert_includes output, 'keeper adds', 'subset shows the keeper-only coverage delta'
+        refute_includes output, 'candidate covers', 'no longer dumps the candidate coverage list'
+        # Compare block: both tests shown as file:line.
+        assert_includes output, 'remove:'
+        assert_includes output, 'keep:'
       end
 
       def test_no_candidates_message
